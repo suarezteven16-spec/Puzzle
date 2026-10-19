@@ -1,0 +1,944 @@
+<!--
+  ══════════════════════════════════════════════════════════════
+  PARA SARAY 🖤 — Rompecabezas de Chimuelo (Furia Nocturna)
+  Juego 100% estático: HTML + CSS + JavaScript, sin dependencias.
+
+  CÓMO PROBARLO (en tu PC):
+    1. Doble clic en index.html (se abre en el navegador), o
+    2. Clic derecho en la carpeta "rompecabezas-saray" →
+       "Open with Code"/PowerShell →  python -m http.server 8000
+       → abre http://localhost:8000
+
+  CÓMO PUBLICARLO GRATIS EN GITHUB PAGES:
+    1. Entra a github.com → New repository → nombre: rompecabezas-saray
+       (público o privado, da igual) → Create repository.
+    2. Sube TODO el contenido de esta carpeta
+       (index.html + carpeta img/ + carpeta audio/):
+       puedes usar "Upload files" en la web de GitHub.
+    3. Settings → Pages → Source: "Deploy from a branch",
+       Branch: main / (root) → Save.
+    4. En 1 minuto queda publicada en:
+       https://TU-USUARIO.github.io/rompecabezas-saray/
+
+  FUNCIONA SIN INTERNET: las imágenes van en img/, la canción en audio/.
+  MÚSICA: «Silly Love Song» de Big Carrot (CC BY-ND 4.0) vía Internet
+  Archive, incluida en el proyecto; se reproduce SOLO cuando tocas el
+  botón de empezar (nada de autoplay). Si el archivo faltara, el
+  navegador genera una melodía de piano de reserva (Web Audio).
+  ══════════════════════════════════════════════════════════════
+-->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Para Saray 🖤 — Rompecabezas de Chimuelo</title>
+<meta name="description" content="Un rompecabezas romántico de Chimuelo hecho para Saray.">
+<meta name="theme-color" content="#07090f">
+<style>
+:root{
+  --bg:#07090f; --bg2:#0e1220; --panel:rgba(16,20,32,.72);
+  --silver:#c9d2e3; --silver-2:#8b95ab; --white:#f4f7fd;
+  --line:rgba(201,210,227,.30); --glow:rgba(220,230,255,.35);
+  --heart:#ead9df;
+  --serif:Georgia,'Times New Roman',serif;
+  --sans:'Segoe UI',system-ui,-apple-system,Roboto,Arial,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:
+    radial-gradient(1200px 700px at 70% -10%, #1a2136 0%, transparent 60%),
+    radial-gradient(900px 600px at 10% 110%, #141a2b 0%, transparent 55%),
+    linear-gradient(180deg,var(--bg) 0%, var(--bg2) 100%);
+  color:var(--white); font-family:var(--sans); overflow-x:hidden;
+  -webkit-tap-highlight-color:transparent;
+}
+body.dragging-active{user-select:none;-webkit-user-select:none}
+#stars{position:fixed;inset:0;z-index:0;pointer-events:none}
+.screen{
+  position:relative;z-index:1;display:none;
+  min-height:100vh; min-height:100dvh;
+  flex-direction:column;align-items:center;
+  padding:28px 18px 48px;
+}
+.screen.active{display:flex;animation:screenIn .7s ease both}
+@keyframes screenIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:.4px}
+button{
+  font-family:var(--sans);cursor:pointer;border:1px solid var(--line);
+  background:linear-gradient(160deg,rgba(255,255,255,.09),rgba(255,255,255,.02));
+  color:var(--white);border-radius:12px;min-height:44px;padding:10px 18px;
+  font-size:15px;transition:transform .15s ease,box-shadow .2s ease,border-color .2s ease;
+}
+button:hover{border-color:var(--glow);box-shadow:0 0 18px rgba(200,215,255,.18)}
+button:active{transform:scale(.96)}
+button:focus-visible{outline:2px solid var(--silver);outline-offset:2px}
+
+/* ── BIENVENIDA ─────────────────────────── */
+#welcome{justify-content:center;gap:22px;text-align:center}
+#dragonArt{width:min(190px,45vw);filter:drop-shadow(0 0 24px rgba(160,185,235,.25));animation:floaty 6s ease-in-out infinite}
+#dragonArt svg{width:100%;height:auto;display:block}
+@keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+#welcome h1{font-size:clamp(1.5rem,5.2vw,2.4rem);line-height:1.35;max-width:20ch;
+  background:linear-gradient(120deg,var(--white) 30%,var(--silver) 60%,var(--white) 90%);
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.subtitle{color:var(--silver-2);font-size:clamp(.95rem,2.6vw,1.05rem);max-width:34ch;line-height:1.6}
+.preview-frame{
+  width:min(240px,58vw);border:1px solid var(--line);border-radius:10px;overflow:hidden;
+  background:var(--panel);box-shadow:0 14px 40px rgba(0,0,0,.5);padding:7px;
+}
+.preview-frame img{width:100%;display:block;border-radius:5px;filter:saturate(.9) contrast(1.02)}
+.preview-frame figcaption{font-size:.72rem;color:var(--silver-2);padding:7px 4px 2px;letter-spacing:.5px}
+.peek{
+  position:absolute;inset:0;z-index:40;display:none;border-radius:12px;
+  background-color:#0b0e16;background-size:contain;background-position:center;background-repeat:no-repeat;
+  box-shadow:inset 0 0 60px rgba(0,0,0,.6);
+}
+.peek.visible{display:block}
+.peek span{
+  position:absolute;left:50%;bottom:10px;transform:translateX(-50%);
+  font-size:.72rem;color:var(--white);background:rgba(5,7,12,.75);
+  border:1px solid var(--line);border-radius:20px;padding:5px 14px;letter-spacing:1px;white-space:nowrap;
+}
+.block{width:min(520px,100%);border:1px solid var(--line);border-radius:16px;
+  background:var(--panel);backdrop-filter:blur(8px);padding:18px 16px}
+.block .label{font-size:.8rem;text-transform:uppercase;letter-spacing:2px;color:var(--silver-2);margin-bottom:12px}
+.diff-btns{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.diff-btns button{flex:1 1 130px;display:flex;flex-direction:column;align-items:center;gap:3px;padding:12px 8px}
+.diff-btns .num{font-size:1.25rem;font-family:var(--serif)}
+.diff-btns .lvl{font-size:.72rem;color:var(--silver-2);letter-spacing:1px}
+.timer-row{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:14px;font-size:.9rem;color:var(--silver)}
+.timer-row input{accent-color:var(--silver);width:16px;height:16px}
+.tiny{font-size:.74rem;color:var(--silver-2);opacity:.85;max-width:44ch;line-height:1.6}
+.lock{display:inline-flex;align-items:center;gap:6px}
+
+/* ── JUEGO ──────────────────────────────── */
+#game{gap:14px}
+.hud{width:min(560px,100%);display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.hud-stats{display:flex;gap:14px;flex-wrap:wrap;font-size:.85rem;color:var(--silver)}
+.hud-stats strong{color:var(--white);font-variant-numeric:tabular-nums;font-size:1rem}
+.hud-actions{display:flex;gap:8px;flex-wrap:wrap}
+.hud-actions button{min-height:40px;padding:8px 13px;font-size:.85rem;border-radius:10px}
+#btnMusic.muted{opacity:.45;text-decoration:line-through}
+.board-wrap{position:relative;display:flex;justify-content:center}
+.board-wrap.loading{width:min(92vw,540px);height:min(92vw,540px);max-height:62vh}
+.board-loading{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  z-index:5;color:var(--silver-2);font-size:.9rem;letter-spacing:1px;
+  border:1px dashed var(--line);border-radius:12px;padding:26px 34px;
+  background:rgba(11,14,22,.6);
+}
+.board-loading.hidden{display:none}
+.board{
+  position:relative;box-sizing:content-box;
+  border-radius:12px;overflow:hidden;border:1px solid var(--line);
+  box-shadow:0 0 0 5px rgba(255,255,255,.03),0 24px 70px rgba(0,0,0,.65),inset 0 0 44px rgba(0,0,0,.55);
+  touch-action:none;background:#0b0e16;
+}
+.piece{
+  position:absolute;background-repeat:no-repeat;cursor:grab;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.07);
+  will-change:transform,left,top;transition:left .18s ease,top .18s ease;
+}
+.piece.dragging{
+  cursor:grabbing;z-index:50;transition:none;
+  filter:brightness(1.1);box-shadow:inset 0 0 0 1px rgba(255,255,255,.2),0 12px 30px rgba(0,0,0,.7);
+}
+.piece.selected{box-shadow:inset 0 0 0 2px var(--white),0 0 16px rgba(255,255,255,.35);animation:pulse 1s ease-in-out infinite}
+.piece.drop-hint{box-shadow:inset 0 0 0 2px var(--silver),0 0 20px rgba(210,225,255,.4)}
+@keyframes pulse{0%,100%{filter:brightness(1)}50%{filter:brightness(1.18)}}
+.board.win::after{
+  content:'';position:absolute;inset:0;z-index:60;pointer-events:none;
+  background:linear-gradient(115deg,transparent 32%,rgba(255,255,255,.5) 50%,transparent 68%);
+  transform:translateX(-110%);animation:sweep 1.5s ease-in-out .15s 2 forwards;
+}
+@keyframes sweep{to{transform:translateX(110%)}}
+.board.win .piece{animation:popWave .55s ease both;animation-delay:calc(var(--i) * .028s)}
+@keyframes popWave{0%{transform:scale(1)}45%{transform:scale(1.07);filter:brightness(1.2)}100%{transform:scale(1)}}
+.tip{font-size:.8rem;color:var(--silver-2);text-align:center;max-width:40ch;line-height:1.6}
+
+/* ── FINAL ──────────────────────────────── */
+#end{padding-top:34px}
+.end-card{width:min(680px,100%);display:flex;flex-direction:column;align-items:center;gap:20px;text-align:center}
+#end h2{font-size:clamp(1.4rem,4.6vw,2rem);
+  background:linear-gradient(120deg,var(--white),var(--silver),var(--white));
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.letter{
+  font-family:var(--serif);font-size:clamp(1rem,3vw,1.13rem);line-height:1.85;color:var(--white);
+  border:1px solid var(--line);border-radius:16px;padding:22px 20px;background:var(--panel);
+  backdrop-filter:blur(8px);max-width:56ch;
+  box-shadow:0 14px 44px rgba(0,0,0,.45);
+}
+.letter .hearts-line{display:block;margin-top:10px;color:var(--heart);letter-spacing:6px}
+.frame-title{font-family:var(--serif);font-size:clamp(1rem,3vw,1.2rem);color:var(--silver);line-height:1.55;max-width:40ch}
+.frame-sub{font-size:.85rem;color:var(--silver-2);max-width:44ch;line-height:1.6;margin-top:-8px}
+.gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;width:100%}
+.gallery figure{
+  position:relative;border:1px solid var(--line);border-radius:10px;overflow:hidden;
+  background:var(--panel);aspect-ratio:3/4;
+  opacity:0;transform:translateY(22px) scale(.96);
+  animation:reveal .9s cubic-bezier(.2,.7,.2,1) both;
+}
+.gallery figure:nth-child(1){animation-delay:.15s}
+.gallery figure:nth-child(2){animation-delay:.45s}
+.gallery figure:nth-child(3){animation-delay:.75s}
+@keyframes reveal{to{opacity:1;transform:none}}
+.gallery img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .5s ease;filter:saturate(.92)}
+.gallery figure:hover img{transform:scale(1.06)}
+.gallery figcaption{
+  position:absolute;left:0;right:0;bottom:0;padding:14px 8px 8px;font-size:.72rem;color:var(--white);
+  background:linear-gradient(180deg,transparent,rgba(5,7,12,.85));letter-spacing:.5px;
+}
+.gallery .mini-heart{position:absolute;top:8px;right:10px;color:var(--heart);font-size:13px;text-shadow:0 0 8px rgba(255,255,255,.6)}
+.end-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.end-actions button{padding:12px 22px}
+.credits{font-size:.7rem;color:var(--silver-2);opacity:.8;line-height:1.7;max-width:52ch}
+
+/* ── CORAZONES EXPLOSIVOS ───────────────── */
+.burst-heart{
+  position:fixed;z-index:999;pointer-events:none;color:var(--silver);font-size:18px;
+  transform:translate(-50%,-50%);animation:burst 1.9s ease-out forwards;
+  text-shadow:0 0 12px rgba(255,255,255,.65);
+}
+.burst-heart.rose{color:var(--heart)}
+@keyframes burst{
+  0%{opacity:0;transform:translate(-50%,-50%) scale(.3) rotate(0deg)}
+  12%{opacity:1}
+  100%{opacity:0;transform:translate(calc(-50% + var(--tx)),calc(-50% + var(--ty))) scale(1.3) rotate(38deg)}
+}
+@media (max-width:480px){
+  .gallery{grid-template-columns:1fr;max-width:320px}
+  .hud{justify-content:center}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001s !important;animation-iteration-count:1 !important;transition-duration:.001s !important}
+}
+</style>
+</head>
+<body>
+
+<canvas id="stars" aria-hidden="true"></canvas>
+
+<!-- Plantilla SVG de Chimuelo (ilustración original en B/N y plata) -->
+<template id="tplDragon">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 480" width="480" height="480" role="img" aria-label="Chimuelo, la Furia Nocturna">
+  <defs>
+    <radialGradient id="drgBg" cx="50%" cy="38%" r="72%">
+      <stop offset="0%" stop-color="#1c2438"/><stop offset="100%" stop-color="#080a12"/>
+    </radialGradient>
+    <linearGradient id="drgBody" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#323b52"/><stop offset="100%" stop-color="#0c101a"/>
+    </linearGradient>
+    <linearGradient id="drgEye" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f8fbff"/><stop offset="100%" stop-color="#9db0cd"/>
+    </linearGradient>
+    <filter id="drgSoft" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="10"/>
+    </filter>
+  </defs>
+  <rect width="480" height="480" fill="url(#drgBg)"/>
+  <g fill="#dfe6f5" opacity=".9">
+    <circle cx="52" cy="64" r="1.7"/><circle cx="118" cy="36" r="1.2"/><circle cx="402" cy="88" r="1.6"/>
+    <circle cx="436" cy="160" r="1.1"/><circle cx="34" cy="180" r="1.3"/><circle cx="86" cy="120" r="1"/>
+    <circle cx="360" cy="42" r="1.2"/><circle cx="430" cy="300" r="1.4"/><circle cx="44" cy="330" r="1.2"/>
+    <circle cx="70" cy="412" r="1.5"/><circle cx="412" cy="410" r="1.3"/><circle cx="252" cy="26" r="1.1"/>
+    <path d="M96 236 l3.4 6.8 7.4 1 -5.4 5.2 1.3 7.4 -6.7-3.5 -6.7 3.5 1.3-7.4 -5.4-5.2 7.4-1z" opacity=".75"/>
+    <path d="M392 232 l2.8 5.6 6.2 .9 -4.5 4.3 1.1 6.2 -5.6-2.9 -5.6 2.9 1.1-6.2 -4.5-4.3 6.2-.9z" opacity=".6"/>
+  </g>
+  <ellipse cx="240" cy="252" rx="152" ry="132" fill="#8fa6cc" opacity=".16" filter="url(#drgSoft)"/>
+  <path d="M168 152 C148 92 158 50 192 30 C204 74 210 116 216 152 Z" fill="url(#drgBody)"/>
+  <path d="M312 152 C332 92 322 50 288 30 C276 74 270 116 264 152 Z" fill="url(#drgBody)"/>
+  <path d="M150 180 C126 150 120 128 129 108 C148 130 159 152 165 178 Z" fill="#151b2a"/>
+  <path d="M330 180 C354 150 360 128 351 108 C332 130 321 152 315 178 Z" fill="#151b2a"/>
+  <path d="M240 136 C304 136 350 178 350 238 C350 300 306 334 240 334 C174 334 130 300 130 238 C130 178 176 136 240 136 Z" fill="url(#drgBody)"/>
+  <path d="M152 252 C132 266 126 288 137 302 C152 292 162 276 166 260 Z" fill="#131927"/>
+  <path d="M328 252 C348 266 354 288 343 302 C328 292 318 276 314 260 Z" fill="#131927"/>
+  <path d="M176 224 C193 205 226 206 240 227 C226 253 192 252 176 224 Z" fill="url(#drgEye)"/>
+  <path d="M240 227 C254 206 287 205 304 224 C288 252 254 253 240 227 Z" fill="url(#drgEye)"/>
+  <ellipse cx="209" cy="230" rx="11.5" ry="14.5" fill="#0a0d15"/>
+  <ellipse cx="271" cy="230" rx="11.5" ry="14.5" fill="#0a0d15"/>
+  <circle cx="213.5" cy="223.5" r="3.6" fill="#ffffff"/>
+  <circle cx="275.5" cy="223.5" r="3.6" fill="#ffffff"/>
+  <ellipse cx="223" cy="286" rx="4" ry="3" fill="#0a0d15" opacity=".85"/>
+  <ellipse cx="257" cy="286" rx="4" ry="3" fill="#0a0d15" opacity=".85"/>
+  <path d="M206 302 C226 318 254 318 274 302" fill="none" stroke="#9db0cd" stroke-width="3" stroke-linecap="round" opacity=".75"/>
+  <path d="M224 312 l5.5 11 5.5-11 Z" fill="#f4f7fd" opacity=".95"/>
+  <path d="M245 312 l5.5 11 5.5-11 Z" fill="#f4f7fd" opacity=".95"/>
+  <path d="M390 360 l4 8 8.8 1.2 -6.4 6.2 1.5 8.8 -7.9-4.2 -7.9 4.2 1.5-8.8 -6.4-6.2 8.8-1.2z" fill="#ead9df" opacity=".85"/>
+</svg>
+</template>
+
+<!-- ══════════ PANTALLA 1 · BIENVENIDA ══════════ -->
+<section id="welcome" class="screen active" aria-label="Bienvenida">
+  <div id="dragonArt" aria-hidden="true"></div>
+  <h1>Saray 🖤, ¿te atreves a descubrir nuestra sorpresa?</h1>
+  <p class="subtitle">Chimuelo guardó algo para ti… Solo hay que armarlo, pieza por pieza. 🐉</p>
+
+  <figure class="preview-frame">
+    <img id="previewImg" src="img/furia-luminosa.webp" alt="Imagen de Chimuelo que vas a armar">
+    <figcaption>Esta es la imagen que vas a armar 🖤</figcaption>
+  </figure>
+
+  <div class="block">
+    <p class="label">Elige la dificultad</p>
+    <div class="diff-btns">
+      <button type="button" data-pieces="12"><span class="num">12</span><span class="lvl">piezas · suave</span></button>
+      <button type="button" data-pieces="24"><span class="num">24</span><span class="lvl">piezas · medio</span></button>
+      <button type="button" data-pieces="48"><span class="num">48</span><span class="lvl">piezas · valiente 🖤</span></button>
+    </div>
+    <label class="timer-row"><input type="checkbox" id="timerCheck" checked> Mostrar cronómetro</label>
+  </div>
+
+  <p class="tiny">🎵 Al empezar sonará una canción romántica en inglés (solo cuando tú lo decidas, nada de autoplay).
+  Funciona sin internet: la canción va incluida en el juego y, si no hay conexión, sonará una melodía de piano de reserva.</p>
+</section>
+
+<!-- ══════════ PANTALLA 2 · JUEGO ══════════ -->
+<section id="game" class="screen" aria-label="Rompecabezas">
+  <div class="hud">
+    <div class="hud-stats">
+      <span>Movimientos <strong id="moveCount">0</strong></span>
+      <span id="timeBox">Tiempo <strong id="timeCount">00:00</strong></span>
+    </div>
+    <div class="hud-actions">
+      <button type="button" id="btnPeek" title="Ver la imagen completa mientras juegas">Ver imagen</button>
+      <button type="button" id="btnMusic" title="Pausar o activar la música" aria-label="Música">♪</button>
+      <button type="button" id="btnSong" title="Elegir otra canción desde tu dispositivo">🎵 Canción</button>
+      <button type="button" id="btnReset" title="Mezclar de nuevo">↺ Reiniciar</button>
+      <button type="button" id="btnExit" title="Volver al inicio">← Salir</button>
+    </div>
+  </div>
+
+  <div class="board-wrap">
+    <div id="boardLoading" class="board-loading">Preparando a Chimuelo… 🐉</div>
+    <div id="board" class="board" role="application" aria-label="Tablero del rompecabezas"></div>
+    <div id="peek" class="peek"><span>Imagen de referencia — toca de nuevo para seguir jugando</span></div>
+  </div>
+
+  <p class="tip">📱 Arrastra las piezas con el dedo o 🖱️ con el ratón.<br>También puedes tocar una pieza y luego otra para intercambiarlas.</p>
+</section>
+
+<!-- ══════════ PANTALLA 3 · SORPRESA FINAL ══════════ -->
+<section id="end" class="screen" aria-label="Sorpresa final">
+  <div class="end-card">
+    <h2>¡Lo lograste, Saray! 🐉✨</h2>
+
+    <p class="letter">
+      “Saray 🖤🐉, cada pieza tenía un lugar, y juntas formaron algo bonito. Hoy solo quería regalarte un momento diferente, sacarte una sonrisa y recordarte que hay personas que hacen nuestros días más especiales sin siquiera intentarlo. Gracias por ser tú. 💗”
+      <span class="hearts-line">♡ ♡ ♡ ♡ ♡</span>
+    </p>
+
+    <h3 class="frame-title">Y ya que encajaste todas las piezas… aquí tienes las mías favoritas 🤍</h3>
+    <p class="frame-sub">Tres momentos que, igual que el rompecabezas, solo tienen sentido cuando están juntos.</p>
+
+    <div class="gallery" id="gallery">
+      <figure><span class="mini-heart">♥</span><img src="img/nosotros-1.jpg" alt="Momento nuestro 1"><figcaption>Nosotros, en calma 🤍</figcaption></figure>
+      <figure><span class="mini-heart">♥</span><img src="img/nosotros-2.jpg" alt="Momento nuestro 2"><figcaption>Nosotros, en risa 🤍</figcaption></figure>
+      <figure><span class="mini-heart">♥</span><img src="img/nosotros-3.jpg" alt="Momento nuestro 3"><figcaption>Nosotros, sin filtros 🤍</figcaption></figure>
+    </div>
+
+    <div class="end-actions">
+      <button type="button" id="btnAgain">Volver a jugar</button>
+      <button type="button" id="btnToHome">Elegir otra dificultad</button>
+    </div>
+
+    <p class="credits">
+      Hecho con cariño para Saray 🖤 · Chimuelo es de DreamWorks (aquí solo le hicimos un homenaje en blanco y negro y plata).<br>
+      Música: «Silly Love Song» — Big Carrot (CC BY-ND 4.0, vía Internet Archive), incluida en el juego para funcionar sin internet.
+    </p>
+  </div>
+</section>
+
+<input type="file" id="musicInput" accept="audio/*" hidden>
+<audio id="bgMusic" loop preload="metadata" src="audio/cancion.mp3"></audio>
+
+<script>
+(function(){
+'use strict';
+
+/* ─────────── Utilidades ─────────── */
+var $ = function(id){ return document.getElementById(id); };
+var rnd = function(n){ return Math.floor(Math.random()*n); };
+
+/* ─────────── Fondo: estrellas + partículas + corazoncitos ─────────── */
+var starCanvas = $('stars');
+var sctx = starCanvas.getContext('2d');
+var W = 0, H = 0, stars = [], motes = [], tStar = 0;
+var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function makeStars(){
+  stars = []; motes = [];
+  var nStars = Math.min(190, Math.round(W*H/8500));
+  for (var i=0;i<nStars;i++){
+    stars.push({ x: Math.random()*W, y: Math.random()*H, r: Math.random()*1.3+0.2,
+                 p: Math.random()*Math.PI*2, s: 0.4+Math.random()*1.2 });
+  }
+  var nMotes = 26;
+  for (var j=0;j<nMotes;j++){
+    motes.push({ x: Math.random()*W, y: Math.random()*H, r: 1+Math.random()*2.2,
+                 vy: -(0.08+Math.random()*0.25), vx: (Math.random()-0.5)*0.16,
+                 p: Math.random()*Math.PI*2, heart: Math.random() < 0.18 });
+  }
+}
+function resizeStars(){
+  var dpr = Math.min(2, window.devicePixelRatio || 1);
+  W = window.innerWidth; H = window.innerHeight;
+  starCanvas.width = Math.round(W*dpr); starCanvas.height = Math.round(H*dpr);
+  starCanvas.style.width = W+'px'; starCanvas.style.height = H+'px';
+  sctx.setTransform(dpr,0,0,dpr,0,0);
+  makeStars();
+}
+function drawStars(){
+  tStar += 0.016;
+  sctx.clearRect(0,0,W,H);
+  var i, s, m, a;
+  for (i=0;i<stars.length;i++){
+    s = stars[i];
+    a = 0.22 + 0.55*Math.abs(Math.sin(tStar*s.s + s.p));
+    sctx.globalAlpha = a; sctx.fillStyle = '#dfe6f5';
+    sctx.beginPath(); sctx.arc(s.x, s.y, s.r, 0, Math.PI*2); sctx.fill();
+  }
+  for (i=0;i<motes.length;i++){
+    m = motes[i];
+    m.y += m.vy; m.x += m.vx + Math.sin(tStar*0.5 + m.p)*0.12;
+    if (m.y < -12){ m.y = H+12; m.x = Math.random()*W; }
+    if (m.x < -12) m.x = W+12; if (m.x > W+12) m.x = -12;
+    sctx.globalAlpha = 0.30 + 0.22*Math.sin(tStar + m.p);
+    if (m.heart){
+      sctx.fillStyle = '#ead9df';
+      sctx.font = (m.r*6+7)+'px serif';
+      sctx.fillText('♥', m.x, m.y);
+    } else {
+      sctx.fillStyle = '#c9d2e3';
+      sctx.beginPath(); sctx.arc(m.x, m.y, m.r, 0, Math.PI*2); sctx.fill();
+    }
+  }
+  sctx.globalAlpha = 1;
+  if (!reduced) requestAnimationFrame(drawStars);
+}
+resizeStars();
+drawStars();
+window.addEventListener('resize', resizeStars);
+
+/* ─────────── Ilustración de Chimuelo (clones del template) ─────────── */
+function dragonClone(){
+  var tpl = $('tplDragon').content.querySelector('svg');
+  return tpl ? tpl.cloneNode(true) : null;
+}
+var art1 = dragonClone(); if (art1) $('dragonArt').appendChild(art1);
+
+function dragonDataURI(){
+  var svg = dragonClone();
+  if (!svg) return null;
+  var s = new XMLSerializer().serializeToString(svg);
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(s);
+}
+
+/* ─────────── Pantallas ─────────── */
+var screens = { welcome: $('welcome'), game: $('game'), end: $('end') };
+function showScreen(name){
+  for (var k in screens) screens[k].classList.remove('active');
+  screens[name].classList.add('active');
+  window.scrollTo(0,0);
+}
+
+/* ─────────── Imagen del rompecabezas ─────────── */
+var PUZZLE_SRC = 'img/furia-luminosa.webp';
+var puzzleImg = new Image();
+var puzzleReady = false;
+
+function loadImage(src){
+  return new Promise(function(res, rej){
+    var im = new Image();
+    im.onload = function(){ res(im); };
+    im.onerror = function(){ rej(new Error('no se pudo cargar '+src)); };
+    im.src = src;
+  });
+}
+
+/* ─────────── Estado del juego ─────────── */
+var board = $('board');
+var moveCountEl = $('moveCount');
+var timeCountEl = $('timeCount');
+var timeBox = $('timeBox');
+
+var cols = 0, rows = 0, total = 0;
+var slots = [];           // slots[posicion] = numero de pieza (pieza N va en posicion N)
+var pieceEls = [];        // pieceEls[numeroDePieza] = elemento DOM
+var moves = 0;
+var playing = false;
+var selected = null;
+var timerId = null, seconds = 0, timerEnabled = true;
+var currentTotal = 12;
+
+// Elige filas/columns según la orientación de la imagen para que las piezas
+// queden lo más cuadradas posible (imagen vertical = más filas que columnas).
+function gridFor(n, portrait){
+  if (portrait){
+    if (n===12) return {cols:3, rows:4};
+    if (n===24) return {cols:4, rows:6};
+    return {cols:6, rows:8};  // 48
+  }
+  if (n===12) return {cols:4, rows:3};
+  if (n===24) return {cols:6, rows:4};
+  return {cols:8, rows:6};    // 48
+}
+function misplacedCount(arr){
+  var c = 0;
+  for (var i=0;i<arr.length;i++) if (arr[i] !== i) c++;
+  return c;
+}
+function shuffleSlots(){
+  var arr, tries = 0;
+  do {
+    arr = [];
+    for (var i=0;i<total;i++) arr.push(i);
+    for (var k=0;k<total*12;k++){
+      var a = rnd(total), b = rnd(total);
+      var t = arr[a]; arr[a] = arr[b]; arr[b] = t;
+    }
+    tries++;
+  } while (tries < 40 && misplacedCount(arr) < Math.ceil(total*0.8));
+  return arr;
+}
+function isSolved(){
+  for (var i=0;i<total;i++) if (slots[i] !== i) return false;
+  return true;
+}
+function updateHud(){
+  moveCountEl.textContent = String(moves);
+  var m = Math.floor(seconds/60), s = seconds%60;
+  timeCountEl.textContent = (m<10?'0':'')+m+':'+(s<10?'0':'')+s;
+}
+function startTimer(){
+  stopTimer(); seconds = 0; updateHud();
+  timerId = setInterval(function(){ seconds++; updateHud(); }, 1000);
+}
+function stopTimer(){ if (timerId){ clearInterval(timerId); timerId = null; } }
+
+function buildPieces(){
+  board.innerHTML = '';
+  pieceEls = [];
+  for (var p=0; p<total; p++){
+    var el = document.createElement('div');
+    el.className = 'piece';
+    el.dataset.piece = String(p);
+    el.style.setProperty('--i', String(p));
+    el.style.backgroundImage = 'url("'+ (puzzleImg.src || '') +'")';
+    board.appendChild(el);
+    pieceEls.push(el);
+  }
+}
+// Ajusta el tablero a la proporción REAL de la imagen (sin recortar nada)
+function layout(){
+  if (!puzzleImg || !puzzleImg.naturalWidth) return;
+  var iw = puzzleImg.naturalWidth, ih = puzzleImg.naturalHeight;
+  var avail = (screens.game.clientWidth || document.documentElement.clientWidth || window.innerWidth) - 40;
+  var maxW = Math.max(240, Math.min(avail, 540));
+  var maxH = Math.round(window.innerHeight * 0.62);
+  var bw = maxW, bh = Math.round(maxW * ih / iw);
+  if (bh > maxH){ bh = maxH; bw = Math.round(maxH * iw / ih); }
+  board.style.width = bw+'px';
+  board.style.height = bh+'px';
+  var pw = bw/cols, ph = bh/rows;
+  // La imagen se escala exactamente al tablero: encaja por completo.
+  for (var s=0; s<total; s++){
+    var p = slots[s];
+    var el = pieceEls[p];
+    var col = s % cols, row = Math.floor(s/cols);   // dónde se coloca la caja
+    var hCol = p % cols, hRow = Math.floor(p/cols); // qué trozo de imagen le toca (su origen)
+    el.style.width = pw+'px';
+    el.style.height = ph+'px';
+    el.style.left = (col*pw)+'px';
+    el.style.top = (row*ph)+'px';
+    el.style.backgroundSize = bw+'px '+bh+'px';
+    el.style.backgroundPosition = (-(hCol*pw))+'px '+(-(hRow*ph))+'px';
+  }
+}
+function swapSlots(i,j){
+  if (i === j) return;
+  var t = slots[i]; slots[i] = slots[j]; slots[j] = t;
+  moves++; updateHud();
+}
+function checkWin(){
+  if (isSolved()) win();
+}
+
+function startGame(n){
+  currentTotal = n;
+  var portrait = puzzleImg && puzzleImg.naturalHeight > puzzleImg.naturalWidth;
+  var g = gridFor(n, portrait);
+  cols = g.cols; rows = g.rows;
+  total = n;
+  moves = 0; selected = null;
+  slots = shuffleSlots();
+  buildPieces();
+  layout();
+  playing = true;
+  board.classList.remove('win');
+  if (typeof peekEl !== 'undefined' && peekEl) peekEl.classList.remove('visible');
+  updateHud();
+  if (timerEnabled) startTimer(); else { stopTimer(); seconds = 0; updateHud(); }
+}
+
+/* ─────────── Interacción: arrastrar + tocar ─────────── */
+var drag = null;
+
+function slotFromPoint(clientX, clientY){
+  var rect = board.getBoundingClientRect();
+  var x = clientX - rect.left - board.clientLeft;
+  var y = clientY - rect.top - board.clientTop;
+  var bw = board.clientWidth, bh = board.clientHeight;
+  if (x < 0 || y < 0 || x >= bw || y >= bh) return null;
+  var pw = bw/cols, ph = bh/rows;
+  var col = Math.min(cols-1, Math.floor(x/pw));
+  var row = Math.min(rows-1, Math.floor(y/ph));
+  return row*cols + col;
+}
+function clearHints(){
+  for (var i=0;i<pieceEls.length;i++) pieceEls[i].classList.remove('drop-hint');
+}
+function clearSelection(){
+  if (selected !== null && pieceEls[selected]) pieceEls[selected].classList.remove('selected');
+  selected = null;
+}
+
+board.addEventListener('pointerdown', function(e){
+  if (!playing) return;
+  var el = e.target.closest ? e.target.closest('.piece') : null;
+  if (!el) return;
+  e.preventDefault();
+  var piece = parseInt(el.dataset.piece, 10);
+  var startSlot = slots.indexOf(piece);
+  drag = { el: el, piece: piece, startSlot: startSlot,
+           x0: e.clientX, y0: e.clientY, moved: false, target: null, pid: e.pointerId };
+  try { el.setPointerCapture(e.pointerId); } catch(err){}
+  el.classList.add('dragging');
+  document.body.classList.add('dragging-active');
+});
+
+board.addEventListener('pointermove', function(e){
+  if (!drag || e.pointerId !== drag.pid) return;
+  var dx = e.clientX - drag.x0, dy = e.clientY - drag.y0;
+  if (!drag.moved && Math.sqrt(dx*dx+dy*dy) > 8){ drag.moved = true; clearSelection(); }
+  if (drag.moved) drag.el.style.transform = 'translate('+dx+'px,'+dy+'px) scale(1.06)';
+  var t = slotFromPoint(e.clientX, e.clientY);
+  if (t !== drag.target){
+    clearHints();
+    drag.target = t;
+    if (t !== null && t !== drag.startSlot && slots[t] !== undefined){
+      pieceEls[slots[t]].classList.add('drop-hint');
+    }
+  }
+});
+
+function endDrag(e){
+  if (!drag || (e && e.pointerId !== drag.pid)) return;
+  var d = drag; drag = null;
+  d.el.classList.remove('dragging');
+  d.el.style.transform = '';
+  document.body.classList.remove('dragging-active');
+  clearHints();
+  try { d.el.releasePointerCapture(d.pid); } catch(err){}
+
+  if (d.moved && d.target !== null && d.target !== d.startSlot){
+    swapSlots(d.startSlot, d.target);
+    layout();
+    checkWin();
+  } else if (!d.moved){
+    handleTap(d.piece);
+  }
+}
+board.addEventListener('pointerup', endDrag);
+board.addEventListener('pointercancel', endDrag);
+
+function handleTap(piece){
+  if (!playing) return;
+  if (selected === null){
+    selected = piece;
+    pieceEls[piece].classList.add('selected');
+  } else if (selected === piece){
+    pieceEls[piece].classList.remove('selected');
+    selected = null;
+  } else {
+    var from = slots.indexOf(selected), to = slots.indexOf(piece);
+    pieceEls[selected].classList.remove('selected');
+    selected = null;
+    if (from >= 0 && to >= 0){
+      swapSlots(from, to);
+      layout();
+      checkWin();
+    }
+  }
+}
+
+/* ─────────── Victoria ─────────── */
+function burstHearts(){
+  var rect = board.getBoundingClientRect();
+  var cx = rect.left + rect.width/2, cy = rect.top + rect.height/2;
+  var chars = ['♥','♡','✦','✧','♥'];
+  for (var i=0;i<46;i++){
+    var h = document.createElement('span');
+    h.className = 'burst-heart' + (i%5===0 ? ' rose' : '');
+    h.textContent = chars[i % chars.length];
+    var ang = Math.random()*Math.PI*2;
+    var dist = 90 + Math.random()*Math.max(rect.width*0.75, 180);
+    h.style.setProperty('--tx', (Math.cos(ang)*dist).toFixed(1)+'px');
+    h.style.setProperty('--ty', (Math.sin(ang)*dist - 70).toFixed(1)+'px');
+    h.style.left = cx+'px';
+    h.style.top = cy+'px';
+    h.style.fontSize = (14 + rnd(14))+'px';
+    h.style.animationDelay = (Math.random()*0.3).toFixed(2)+'s';
+    document.body.appendChild(h);
+    (function(node){ setTimeout(function(){ if (node.parentNode) node.parentNode.removeChild(node); }, 2400); })(h);
+  }
+}
+function win(){
+  playing = false;
+  stopTimer();
+  clearSelection();
+  board.classList.add('win');
+  burstHearts();
+  setTimeout(function(){ burstHearts(); }, 550);
+  setTimeout(function(){
+    showScreen('end');
+    // re-dispara la animación de las fotos del galería
+    var figs = $('gallery').querySelectorAll('figure');
+    for (var i=0;i<figs.length;i++){
+      figs[i].style.animation = 'none';
+      void figs[i].offsetWidth;
+      figs[i].style.animation = '';
+    }
+  }, 1900);
+}
+
+/* ─────────── Música de fondo (funciona SIN INTERNET) ───────────
+   1º) audio/cancion.mp3  → archivo local (no necesita internet)
+   2º) enlaces de respaldo → solo si el archivo local faltara
+   3º) melodía de piano     → generada por el propio navegador si
+       no hay archivo ni conexión (siempre offline).               */
+var music = $('bgMusic');
+var btnMusic = $('btnMusic');
+var musicInput = $('musicInput');
+var TRACKS = [
+  'audio/cancion.mp3',
+  'https://archive.org/download/big-carrot-silly-love-song/Big%20Carrot%20-%20Silly%20Love%20Song.mp3'
+];
+var trackIdx = 0;
+music.volume = 0.34;
+
+/* ── Melodía de piano con Web Audio (100% offline) ── */
+var audioCtx = null, synthGain = null, synthTimer = null, synthPlaying = false;
+var synthBase = 220; // La3
+var synthChords = [[0,4,7],[0,3,7],[-3,0,5],[-2,2,5],[0,4,7],[-5,0,3]];
+function synthFreq(semi){ return synthBase * Math.pow(2, semi/12); }
+function initSynth(){
+  if (audioCtx) return;
+  var AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return;
+  audioCtx = new AC();
+  synthGain = audioCtx.createGain();
+  synthGain.gain.value = 0;
+  synthGain.connect(audioCtx.destination);
+}
+function synthVoice(freq, when, dur, vol){
+  var o1 = audioCtx.createOscillator();
+  var o2 = audioCtx.createOscillator();
+  o1.type = 'sine'; o1.frequency.value = freq;
+  o2.type = 'triangle'; o2.frequency.value = freq*1.002;
+  var g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.0001, when);
+  g.gain.linearRampToValueAtTime(vol, when + 0.5);
+  g.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+  o1.connect(g); o2.connect(g); g.connect(synthGain);
+  o1.start(when); o2.start(when);
+  o1.stop(when + dur + 0.1); o2.stop(when + dur + 0.1);
+}
+function synthTick(){
+  if (!synthPlaying) return;
+  var t = audioCtx.currentTime + 0.06;
+  var ch = synthChords[Math.floor(Math.random()*synthChords.length)];
+  for (var i=0;i<ch.length;i++){
+    synthVoice(synthFreq(ch[i]-12), t, 3.4, 0.05);
+    synthVoice(synthFreq(ch[i]), t + i*0.08, 2.6, 0.04);
+  }
+  synthVoice(synthFreq(ch[Math.floor(Math.random()*3)] + 12), t + 1.3, 1.6, 0.03);
+  synthTimer = setTimeout(synthTick, 2500);
+}
+function startSynth(){
+  initSynth();
+  if (!audioCtx) return false;
+  if (audioCtx.resume) audioCtx.resume();
+  synthPlaying = true;
+  synthGain.gain.cancelScheduledValues(audioCtx.currentTime);
+  synthGain.gain.linearRampToValueAtTime(0.5, audioCtx.currentTime + 1.5);
+  synthTick();
+  return true;
+}
+function stopSynth(){
+  synthPlaying = false;
+  if (synthTimer){ clearTimeout(synthTimer); synthTimer = null; }
+  if (synthGain && audioCtx){
+    synthGain.gain.cancelScheduledValues(audioCtx.currentTime);
+    synthGain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.5);
+  }
+}
+
+var musicMode = 'file'; // 'file' | 'synth' | 'custom'
+var customSongURL = null;
+
+function loadTrack(i){
+  if (i >= TRACKS.length) return false;
+  trackIdx = i;
+  music.src = TRACKS[i];
+  return true;
+}
+function useSynthFallback(){
+  if (musicMode === 'synth') return;
+  musicMode = 'synth';
+  try { music.pause(); } catch(e){}
+  if (startSynth()){
+    syncMusicBtn();
+    btnMusic.title = 'Melodía de piano (sin internet)';
+  } else {
+    btnMusic.classList.add('muted');
+    btnMusic.title = 'Tu navegador no permite audio aquí';
+  }
+}
+// Si falla la pista actual (falta el archivo o no hay internet),
+// intenta la siguiente y, si no queda ninguna, toca la melodía offline.
+music.addEventListener('error', function(){
+  if (musicMode === 'custom') return;
+  if (loadTrack(trackIdx + 1)) startMusic();
+  else useSynthFallback();
+});
+function startMusic(){
+  if (musicMode === 'synth'){ startSynth(); syncMusicBtn(); return; }
+  var pr = music.play();
+  if (pr && pr.catch) pr.catch(function(){
+    // autoplay o error: probamos la siguiente fuente o la melodía offline
+    if (musicMode === 'custom') return;
+    if (loadTrack(trackIdx + 1)) { var p2 = music.play(); if (p2 && p2.catch) p2.catch(useSynthFallback); }
+    else useSynthFallback();
+    syncMusicBtn();
+  });
+  syncMusicBtn();
+}
+function musicIsPlaying(){
+  return musicMode === 'synth' ? synthPlaying : !music.paused;
+}
+function syncMusicBtn(){
+  if (musicIsPlaying()) btnMusic.classList.remove('muted');
+  else btnMusic.classList.add('muted');
+}
+music.addEventListener('play', syncMusicBtn);
+music.addEventListener('pause', syncMusicBtn);
+
+btnMusic.addEventListener('click', function(){
+  if (musicMode === 'synth'){
+    if (synthPlaying){ stopSynth(); } else { startSynth(); }
+    syncMusicBtn();
+    return;
+  }
+  if (music.paused) startMusic();
+  else { music.pause(); syncMusicBtn(); }
+});
+$('btnSong').addEventListener('click', function(){ musicInput.click(); });
+musicInput.addEventListener('change', function(){
+  var f = musicInput.files && musicInput.files[0];
+  if (!f) return;
+  if (customSongURL) URL.revokeObjectURL(customSongURL);
+  customSongURL = URL.createObjectURL(f);
+  if (musicMode === 'synth') stopSynth();
+  musicMode = 'custom';
+  music.src = customSongURL;
+  startMusic();
+  musicInput.value = '';
+});
+
+/* ─────────── Botones de pantallas ─────────── */
+var diffBtns = document.querySelectorAll('.diff-btns button');
+Array.prototype.forEach.call(diffBtns, function(b){
+  b.addEventListener('click', function(){
+    timerEnabled = $('timerCheck').checked;
+    timeBox.style.display = timerEnabled ? '' : 'none';
+    var n = parseInt(b.dataset.pieces, 10);
+    showScreen('game');
+    startWhenReady(n);
+    loadTrack(0);
+    startMusic();
+  });
+});
+
+// Espera a que la imagen cargue (o al respaldo SVG) antes de montar el puzzle,
+// para que la cuadrícula respete la orientación real de la foto.
+var pendingStart = null;
+function startWhenReady(n){
+  if (puzzleReady){ startGame(n); return; }
+  pendingStart = n;
+  $('boardLoading').classList.remove('hidden');
+  document.querySelector('.board-wrap').classList.add('loading');
+}
+function tryStartPending(){
+  if (pendingStart !== null && puzzleReady){
+    startGame(pendingStart);
+    pendingStart = null;
+  }
+  $('boardLoading').classList.add('hidden');
+  document.querySelector('.board-wrap').classList.remove('loading');
+}
+$('btnReset').addEventListener('click', function(){
+  if (!puzzleReady) return;
+  startGame(currentTotal);
+});
+$('btnExit').addEventListener('click', function(){
+  playing = false; stopTimer();
+  showScreen('welcome');
+});
+$('btnAgain').addEventListener('click', function(){
+  showScreen('game');
+  startGame(currentTotal);
+});
+$('btnToHome').addEventListener('click', function(){
+  showScreen('welcome');
+});
+
+/* Ver imagen de referencia durante el juego */
+var peekEl = $('peek');
+$('btnPeek').addEventListener('click', function(){
+  if (!puzzleImg || !puzzleImg.src) return;
+  peekEl.style.backgroundImage = 'url("' + puzzleImg.src + '")';
+  peekEl.classList.toggle('visible');
+});
+window.addEventListener('keydown', function(e){
+  if (e.key === 'Escape') peekEl.classList.remove('visible');
+});
+
+/* Si la imagen de la bienvenida no está, se oculta sin romper nada */
+var previewImg = $('previewImg');
+previewImg.addEventListener('error', function(){
+  var fig = previewImg.closest('figure');
+  if (fig) fig.style.display = 'none';
+});
+
+window.addEventListener('resize', function(){ if (playing) layout(); });
+
+/* ─────────── Arranque: cargar imagen (con respaldo SVG) ─────────── */
+loadImage(PUZZLE_SRC).then(function(img){
+  puzzleImg = img;
+  puzzleReady = true;
+  tryStartPending();
+}).catch(function(){
+  var fb = dragonDataURI();
+  if (!fb){ return; }
+  loadImage(fb).then(function(img){
+    puzzleImg = img;
+    puzzleReady = true;
+    tryStartPending();
+  });
+});
+})();
+</script>
+</body>
+</html>
